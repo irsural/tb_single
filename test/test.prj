@@ -1,0 +1,57 @@
+[Project ID]
+Signature=UE Proj: v.1
+[Project Information]
+Compilable=1
+Use Relative Directory=1
+Relative to Project File=1
+Project Start=D6070B0004001E000C0026003500000071
+Include Sub Directories=1
+Project Tagfile=
+Project Wordfile=
+Filter=
+Using VCS=0
+Save Account=0
+Create Tagfile=0
+CTags Legacy Support=0
+Working Time=109769
+[Files]
+0=test.cpp
+1=..\mxsrclib\arch\cur\counter.cpp
+2=..\mxsrclib\arch\cur\counter.h
+3=..\mxsrclib\timer.cpp
+4=..\mxsrclib\timer.h
+5=..\mxsrclib\arch\cur\irsdefs.h
+[uemakeXp]
+ReleaseMode=0
+[Open Files]
+Open File0=E:\Files\Turbine\prjs\dos32\test\test.cpp
+Open File Pos0=494
+Open File Line0=42
+Active File Index=0
+Open File Window Pos0=2,3,-1,-1,-4,-30,154,203,1047,759
+Open File1=E:\Files\Turbine\prjs\dos32\mxsrclib\arch\cur\counter.h
+Active File Display Mode=3
+Open File Pos1=756
+Open File Line1=232
+Open File Window Pos1=0,1,-1,-1,-4,-30,44,58,938,614
+Open File2=E:\Files\Turbine\prjs\dos32\mxsrclib\arch\cur\counter.cpp
+Open File Pos2=115
+Open File Line2=0
+Open File Window Pos2=0,1,-1,-1,-4,-30,66,87,960,643
+Open File3=E:\Files\Turbine\prjs\dos32\mxsrclib\timer.cpp
+Open File Pos3=409
+Open File Line3=0
+Open File Window Pos3=0,1,-1,-1,-4,-30,110,145,1004,701
+Open File4=E:\Files\Turbine\prjs\dos32\mxsrclib\timer.h
+Open File Pos4=287
+Open File Line4=0
+Open File Window Pos4=0,1,-1,-1,-4,-30,132,174,1026,730
+Open File5=E:\Files\Turbine\prjs\dos32\mxsrclib\arch\cur\irsdefs.h
+Open File Pos5=221
+Open File Line5=634
+Open File Window Pos5=0,1,-1,-1,-4,-30,132,174,1026,730
+Open File6=
+Open File Pos6=92169
+Open File Line6=91562
+Open File Window Pos6=0,1,-1,-1,-4,-30,132,174,1025,730
+Open File7=

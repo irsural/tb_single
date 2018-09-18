@@ -1,0 +1,32 @@
+// Локальные объявления типов
+// Дата 18.09.2007 15:31
+// Watcom C++
+
+#ifndef LIRSDEFSH
+#define LIRSDEFSH
+
+// Включение 64-битного типа
+#define IRSDEFS_I64
+
+// 8-битовое целое со знаком
+typedef signed char             irs_i8;
+// 8-битовое целое без знака
+typedef unsigned char           irs_u8;
+// 16-битовое целое со знаком
+typedef signed short            irs_i16;
+// 16-битовое целое без знака
+typedef unsigned short          irs_u16;
+// 32-битовое целое со знаком
+typedef signed long             irs_i32;
+// 32-битовое целое без знака
+typedef unsigned long           irs_u32;
+// 64-битовое целое со знаком
+typedef signed long long        irs_i64;
+// 64-битовое целое без знака
+typedef unsigned long long      irs_u64;
+// Тип с разрядностью процессора (ОС) со знаком
+typedef irs_i32                 irs_iarc;
+// Тип с разрядностью процессора (ОС) без знака
+typedef irs_u32                 irs_uarc;
+
+#endif //LIRSDEFSH
