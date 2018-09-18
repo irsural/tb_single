@@ -67,8 +67,8 @@ d????Include directories:
 1
 17
 WString
-106
-$(%watcom)\h;..\include;E:\Files\Turbine\prjs\dos32\mxsrclib;E:\Files\Turbine\prjs\dos32\mxsrclib\arch\cur
+56
+$(%watcom)\h;..\include;..\mxsrclib\arch\cur;..\mxsrclib
 0
 18
 WVList
