@@ -4695,6 +4695,9 @@ void corr_hzu()
   }
   if (hzu_mint > hzu) hzu_mint = hzu;
   if (hzu_maxt < hzu) hzu_maxt = hzu;
+  
+  // Поиск интервала времени t_d_hzu в котором hzu меняется незначительно
+  // < d_hzu_max. При этом флаг d_hzu_norm выставляется в 1
   if (test_to_cnt_t(to_d_hzu)) {
     set_to_cnt_t(to_d_hzu, t_d_hzu);
     if (hzu_maxt - hzu_mint < d_hzu_max) d_hzu_norm = 1;
