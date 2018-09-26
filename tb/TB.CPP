@@ -5,7 +5,7 @@
 #define WDT_ON // Включение сторожевого таймера
 //#define WDT_INT // Перенос сброса сторожевого таймера в ti0
 //#define NO_AI_FILTR // Блокировка фильтра AI
-//#define DEBUG // Режим отладки на ПК
+#define DEBUG // Режим отладки на ПК
 //#define BLOCK_ADC_ON_DBG // Блокировка обсчета АЦП в режиме отладки
 #define BLOCK_SHOW_DPORT // Блокировка отображения портов в отладке
 //#define DBGONCPU // Режим отладки на CPU686 (Убрать BLOCK_ADC_ON_DBG,
@@ -3789,7 +3789,7 @@ void select_isvt_sensor()
     // Поиск датчика с максимальным количеством совпадений
     for (int sensor_idx = i_sovp; sensor_idx < sensor_count; sensor_idx++) {
       if ((!blocked_sensors[sensor_idx]) && 
-      	((max_sovp < schet_sovp[sensor_idx]))) 
+        ((max_sovp < schet_sovp[sensor_idx]))) 
       {
         max_sovp = schet_sovp[sensor_idx];
         i_sovp = sensor_idx;
@@ -4467,14 +4467,14 @@ void dbg_proc()
   if (!init_corr)
   if (test_to_cnt_t(to_show)) {
     next_to_cnt_t(to_show, dtms_test);
-    _setcursortype(_NOCURSOR);
+    //_setcursortype(_NOCURSOR);
     dprintf("hzu = %5.2f; n_ref = %6.2f n = %6.1f", hzu, n_ref, n);
-    clreol();
+    //clreol();
     dprintf("\r");
     //n = _n_1 - _dn_1*random(1000)/1000.;
   }
 
-  _setcursortype(_NORMALCURSOR);
+  //_setcursortype(_NORMALCURSOR);
   #ifdef TEST
   static test_save_f_s = -1;
   if (chk_event(&test_save_f_s, test_save_f, 1)) {
@@ -4493,7 +4493,7 @@ void dbg_proc()
         break;
       #ifndef NOP
       case 13:
-        dprintf("n_ref = "); clreol(); scanf("%g", &n_ref);
+        dprintf("n_ref = "); /*clreol();*/ scanf("%g", &n_ref);
         break;
       #endif
       default:
