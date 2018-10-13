@@ -73,8 +73,6 @@
 #endif //USE_CPU_COUNTER
 
 // Новое с 29.08.08
-#define NNEW
-#ifdef NNEW
 // Блокировка переключения датчиков при расхаживании
 #define SENS_SEL_BLOCK_ON_VALVE_TEST
 // Блокировка фильтра частоты детектирования сброса нагрузки по n_all_bad_isvt
@@ -85,7 +83,6 @@
 #define VALVE_TEST_TIMEOUT_BIGGER
 // Уменьшения диапазона совпадения датчиков с 10 до 3 об./мин
 #define SENS_SEL_REDUCE_RANGE_EQUAL
-#endif //NNEW
 
 #ifdef DBGONCPU
 #define DBGISVT // Выключение чтения частоты с ИСВТ
@@ -1263,7 +1260,6 @@ int wait_switch_isvt_sensor = 0;
 // Ожидание завершения интервала проверки датчиков ИСВТ
 int wait_interval_isvt = 0;
 
-#ifdef NNEW
 // Количество датчиков частоты на всех ИСВТ
 const int sensor_count = 6;
 // Номер первого датчика для sensor_select
@@ -1278,7 +1274,6 @@ const int isvt_freq_count = 3;
 const int isvt_sensor_first = 1;
 // Номер второго датчика для ИСВТ
 const int isvt_sensor_second = 2;
-#endif //NNEW
 
 // Режим работы с ИСВТ
 // 0 - норма
@@ -3764,11 +3759,7 @@ void select_isvt_sensor()
   #endif //SENS_SEL_BLOCK_ON_VALVE_TEST
   #endif //NEW_SENS_SEL
 
-  #ifdef NNEW
   int n_all_bad_isvt_no_unblocked_sensors = 0;
-  #else //NNEW
-  int flag = 1;
-  #endif //NNEW
   #ifdef BLOCK_SELECT_N_VALVE_TEST_ISVT
   int i_sovp = 0;
   int max_sovp = schet_sovp[i_sovp];
@@ -3859,8 +3850,6 @@ void select_isvt_sensor()
   }
   #endif //NEW_SENS_SEL
 
-  #ifdef NNEW
-  
   int n_all_bad_isvt_max_sovp_low = 0;
   if (max_sovp < 2) {
     n_all_bad_isvt_max_sovp_low = 1; // Если мало совпадений
@@ -3888,25 +3877,6 @@ void select_isvt_sensor()
   }
   #endif //NOP
   
-  #else //NNEW
-  
-  #ifndef NNEW
-  if (max_sovp >= 2) flag = 0;
-  #endif //NNEW
-  n_all_bad_isvt = flag;
-  #ifdef NOP
-  // Частота 3000 в работе
-  i_sovp = i_sovp;
-  n = 3000.f;
-  #else //NOP
-  n = *nm[i_sovp]/10.f;
-  #endif //NOP
-  if (kg_v) {
-    if ((n > 3700.f) || (n < 2300.f)) n_all_bad_isvt = 1;
-  }
-  
-  #endif //NNEW
-
   #endif //DBGONCPU
   
   #ifdef DETECT_N_ANOMAL
