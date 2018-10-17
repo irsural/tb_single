@@ -8411,8 +8411,8 @@ void k_vd_proc()
   int kvdb, kvdm;
   if (vd_sw != 3)
   if (kg_v) {
-        if (vd_sw == 2) {
-        k_vd_mode = 4;
+    if (vd_sw == 2) {
+      k_vd_mode = 4;
     } else {
       if (1 == opt_sw) {
         k_vd_mode = 2;
@@ -8421,7 +8421,7 @@ void k_vd_proc()
       }
     }
   } else {
-        k_vd_mode = 1;
+    k_vd_mode = 1;
   }
   if (k_vd_mode) {
     if (k_vd_mode != k_vd_mode_prev) {
