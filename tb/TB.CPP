@@ -7403,21 +7403,21 @@ void interrupt aii()
 // front - 0 - событие по переднему фронту, 1 - по заднему, 2 - оба фронта
 int chk_event(int *var, int signal, int front)
 {
-        int res = 0;
-        switch (front) {
-                case 0:
-                        if ((0 == *var) && (1 == signal)) res = 1;
-                        break;
-                case 1:
-                        if ((1 == *var) && (0 == signal)) res = 1;
-                        break;
-                case 2:
-                        if ((0 == *var) && (1 == signal)) res = 1;
-                        if ((1 == *var) && (0 == signal)) res = 1;
-                        break;
-        }
-        *var = signal;
-        return res;
+  int res = 0;
+  switch (front) {
+    case 0:
+      if ((0 == *var) && (1 == signal)) res = 1;
+      break;
+    case 1:
+      if ((1 == *var) && (0 == signal)) res = 1;
+      break;
+    case 2:
+      if ((0 == *var) && (1 == signal)) res = 1;
+      if ((1 == *var) && (0 == signal)) res = 1;
+      break;
+  }
+  *var = signal;
+  return res;
 }
 // Обработка данных от плат AI
 void ai_proc()
