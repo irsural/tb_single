@@ -1962,6 +1962,8 @@ float *ai_smax[15] = {&pim_smax, &prm_smax, &ne_smax, &prs_smax, &pt_smax,
 
 // ********************
 // Служебные перменные
+// Ревизия программы в соответствии c Git (19.11.2018)
+long &sw_rev = buf[CNT_VAR - 54];
 // Включение управления НД без датчика hesnd
 long &nd_nosens = buf[CNT_VAR - 53];
 // Частота по первому датчику, об./мин.
@@ -3152,6 +3154,9 @@ void init()
   rtpv_ot.slope = tpv_ref_sl;
   rtpv_ot.recalc = 1;
   ogr_temp(&rtpv_ot, rtpv_ot.cur);
+  
+  // Ревизия программы в соответствии c Git (19.11.2018)
+  sw_rev = 8;
 
   // Инициализация таймаутов
   set_to_cnt_t(to_dt, dtms);
