@@ -2294,7 +2294,7 @@ void filtrbuf()
     sync(reg_eszo_ki = fr);
   }
   if (vbuf[79]) {
-    fr = bound(*(float *)&wbuf[79], 0.f, 1e6f);
+    fr = bound(*(float *)&wbuf[79], 0.f, 165.f);
     sync(n_ref_sl = fr);
   }
   if (vbuf[81]) {
@@ -3168,7 +3168,7 @@ void init()
   ogr_temp(&rtpv_ot, rtpv_ot.cur);
   
   // Ревизия программы в соответствии c Git (19.11.2018)
-  sw_rev = 9;
+  sw_rev = 10;
 
   // Инициализация таймаутов
   set_to_cnt_t(to_dt, dtms);
