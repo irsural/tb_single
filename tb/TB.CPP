@@ -345,6 +345,8 @@ typedef struct _pid_data {
   double ki;
   // Коэффициент передачи дифференциатора
   double kd;
+  // Коэффициент передачи антиинтегратора (инверсный интегратор)
+  double kii;
   // Минимальное значение на выходе
   double min;
   // Максимальное значение на выходе
@@ -603,6 +605,14 @@ void ai_int();
 // Прерывание аналоговых плат
 void interrupt aii(...);
 #endif //AI_INT
+// Синхронизация ПИД-регулятора без сбросов интегратор на текущее
+// значение регулируемого параметра
+// при выключенном регуляторе
+// pd - Параметры ПИД-регулятора,
+// e - ошибка на входе регулятора
+// rp - значение выдаваемое на исполнительный механизм на который
+// осуществляется синхронизация
+void pid_reg_sync_new(pid_data *pd, double e, double rp);
 // Синхронизация ПИД-регулятора на текущее значение регулируемого параметра
 // при выключенном регуляторе
 // pd - Параметры ПИД-регулятора,
@@ -644,6 +654,8 @@ void nd_exec(int dir);
 void nd_proc();
 // ПИД-регулятор
 double pid_reg(pid_data *pd, double e);
+// ПИД-регулятор без сбросов интегратора
+double pid_reg_new(pid_data *pd, double e);
 // Перевод показаний таймера 0 из отсчетов в мс
 double tm0toms(uint cnt);
 // Шаг дискретизации регуляторов, с
@@ -1617,8 +1629,8 @@ float &reg_eszo_ki = *(float *)&buf[77];
 float &n_ref_a = *(float *)&buf[78];
 // Крутизна изменения задания РЧВТ (100 (об./мин.)/мин.)
 float &n_ref_sl = *(float *)&buf[79];
-// Конец зоны нечувствительности по частоте РМ
-//float &n_ns_rm_e = *(float *)&buf[80];
+// Антиинтегральный коэффициент РЧВТ
+float &reg_rchvt_kii = *(float *)&buf[68];
 // Крутизна изменения задания РМ по электрической мощности
 float &ne_ref_sl = *(float *)&buf[81];
 // Задание по электрической мощности РМ
@@ -2296,6 +2308,10 @@ void filtrbuf()
   if (vbuf[79]) {
     fr = bound(*(float *)&wbuf[79], 0.f, 165.f);
     sync(n_ref_sl = fr);
+  }
+  if (vbuf[80]) {
+    fr = bound(*(float *)&wbuf[79], -1e6f, 1e6f);
+    sync(reg_rchvt_kii = fr);
   }
   if (vbuf[81]) {
     fr = bound(*(float *)&wbuf[81], 0.f, 1e6f);
@@ -3168,7 +3184,7 @@ void init()
   ogr_temp(&rtpv_ot, rtpv_ot.cur);
   
   // Ревизия программы в соответствии c Git (19.11.2018)
-  sw_rev = 11;
+  sw_rev = 12;
 
   // Инициализация таймаутов
   set_to_cnt_t(to_dt, dtms);
@@ -5129,7 +5145,7 @@ void all_proc()
         rchvt_isodr.fd.y1 = n;
         #endif //ISODR
 
-        pid_reg_sync(&rchvt_reg, 0., servo_cnt_ref);
+        pid_reg_sync_new(&rchvt_reg, 0., servo_cnt_ref);
       }
       if (rchvt_on) {
         n_ref_a = ogr_temp(&rchvt_ot, n_ref);
@@ -5154,30 +5170,11 @@ void all_proc()
 
         #endif //NELIN
 
-        // Синхронизация интергатора при изменении коэффициентов
-        // и после коррекции
-        static int _init = 1;
-        static double k_p = 0., ki_p = 0., kd_p = 0.;
-        pid_data *reg = &rchvt_reg;
-        if (_init) {
-          _init = 0;
-          k_p = reg->k;
-          ki_p = reg->ki;
-          kd_p = reg->kd;
-        } else {
-          if (corr_hzu_en) {
-            reg->prev_out += delta_cnt_corr;
-          }
-          if ((k_p != reg->k) || (ki_p != reg->ki) || (kd_p != reg->kd) ||
-            corr_hzu_en) {
-            #ifdef CORR_HZU_ERR_CORR
-            corr_hzu_en = 0;
-            #endif //CORR_HZU_ERR_CORR
-            pid_reg_sync(reg);
-          }
-          k_p = reg->k;
-          ki_p = reg->ki;
-          kd_p = reg->kd;
+        // Синхронизация интергатора после коррекции
+        // При изменении коэффициентов не нужно в новом регуляторе
+        if (corr_hzu_en) {
+          rchvt_reg.prev_e += delta_cnt_corr;
+          pid_reg_sync_new(&rchvt_reg, rchvt_reg.prev_e, rchvt_reg.prev_out);
         }
 
         #ifdef RCHVT_DEFENSE
@@ -5185,7 +5182,7 @@ void all_proc()
           rchvt_reg.int_val = 0.;
         #endif //RCHVT_DEFENSE
 
-        servo_cnt_rchvt = pid_reg(&rchvt_reg, n_ref_a - n_);
+        servo_cnt_rchvt = pid_reg_new(&rchvt_reg, n_ref_a - n_);
       } else {
         n_ref_a = rchvt_ot.cur = n;
       }
@@ -5981,6 +5978,7 @@ int readbuf(long *abuf)
   reg_eszo_k = 1.f;
   reg_eszo_ki = 0.f;
   n_ref_sl = 100.f;
+  reg_rchvt_kii = 0.05f;
   ne_ref_sl = 3.f;
   pt_rm_min = 125.f;
   pt_rm_max = 132.f;
@@ -7799,6 +7797,52 @@ double pid_reg(pid_data *pd, double e)
   pd->prev_e = e;
   pd->prev_out = res;
   return res;
+}
+// ПИД-регулятор без сбросов интегратора
+double pid_reg_new(pid_data *pd, double e)
+{
+  double dif_int = pd->prev_e;
+  double res = 0;
+  if (pd->block_int_ext == 1) if (pd->prev_e > 0) dif_int = 0;
+  if (pd->block_int_ext == -1) if (pd->prev_e < 0) dif_int = 0;
+  pd->int_val += pd->k*pd->ki*dif_int;
+  double Ires = pd->int_val;
+  double PDres = pd->k*(e + pd->kd*(e - pd->prev_e));
+  res = Ires + PDres;
+  
+  // Применение антиинтегратора (инверсный интегратор)
+  if ((res > pd->max) || (res < pd->min)) {
+    pd->int_val -= pd->k*pd->ki*dif_int;
+    pd->int_val -= pd->k*pd->kii*dif_int;
+    Ires = pd->int_val;
+  }
+
+  Ires = bound(Ires, pd->min, pd->max);
+  res = Ires + PDres;
+  
+  res = bound(res, pd->min, pd->max);
+  pd->pp_e = pd->prev_e;
+  pd->prev_e = e;
+  pd->prev_out = res;
+  return res;
+}
+// Синхронизация ПИД-регулятора без сбросов интегратор на текущее
+// значение регулируемого параметра
+// при выключенном регуляторе
+// pd - Параметры ПИД-регулятора,
+// e - ошибка на входе регулятора
+// rp - значение выдаваемое на исполнительный механизм на который
+// осуществляется синхронизация
+void pid_reg_sync_new(pid_data *pd, double e, double rp)
+{
+  if ((pd->k == 0.) || (pd->ki == 0.)) {
+    pd->int_val = 0.;
+  } else {
+    pd->int_val = bound(rp - pd->k*e, pd->min, pd->max);
+  }
+  pd->pp_e = e;
+  pd->prev_e = e;
+  pd->prev_out = rp;
 }
 // Синхронизация ПИД-регулятора на текущее значение регулируемого параметра
 // при выключенном регуляторе
