@@ -1630,7 +1630,7 @@ float &n_ref_a = *(float *)&buf[78];
 // Крутизна изменения задания РЧВТ (100 (об./мин.)/мин.)
 float &n_ref_sl = *(float *)&buf[79];
 // Антиинтегральный коэффициент РЧВТ
-float &reg_rchvt_kii = *(float *)&buf[68];
+float &reg_rchvt_kii = *(float *)&buf[80];
 // Крутизна изменения задания РМ по электрической мощности
 float &ne_ref_sl = *(float *)&buf[81];
 // Задание по электрической мощности РМ
@@ -2310,7 +2310,7 @@ void filtrbuf()
     sync(n_ref_sl = fr);
   }
   if (vbuf[80]) {
-    fr = bound(*(float *)&wbuf[79], -1e6f, 1e6f);
+    fr = bound(*(float *)&wbuf[80], -1e6f, 1e6f);
     sync(reg_rchvt_kii = fr);
   }
   if (vbuf[81]) {
