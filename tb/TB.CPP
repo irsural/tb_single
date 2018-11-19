@@ -1179,6 +1179,8 @@ int kg_off_esnd_zakr = 0;
 float t_dig = 1000.f;
 // Интервал смены декады кнопками ВД, НД, мс
 float t_dec = 4000.f;
+// Данные ограничителя темпа задания РЧВТ
+ogr_temp_data rchvt_ot;
 // Данные ограничителя темпа задания РМ
 ogr_temp_data rm_ot;
 // Данные ограничителя темпа задания РТО1
@@ -1611,10 +1613,10 @@ float &pnto_sl = *(float *)&buf[75];
 float &reg_eszo_k = *(float *)&buf[76];
 // Интегральный коэффициент регулятора ЭСЗО
 float &reg_eszo_ki = *(float *)&buf[77];
-// Крутизна передачи частоты на РМ
-//float &n_sl_rm = *(float *)&buf[78];
-// Начало зоны нечувствительности по частоте РМ
-//float &n_ns_rm_b = *(float *)&buf[79];
+// Задание по частоте вращения турбины РЧВТ [об./мин.] после ограничителя темпа
+float &n_ref_a = *(float *)&buf[78];
+// Крутизна изменения задания РЧВТ (100 (об./мин.)/мин.)
+float &n_ref_sl = *(float *)&buf[79];
 // Конец зоны нечувствительности по частоте РМ
 //float &n_ns_rm_e = *(float *)&buf[80];
 // Крутизна изменения задания РМ по электрической мощности
@@ -2290,6 +2292,10 @@ void filtrbuf()
   if (vbuf[77]) {
     fr = bound(*(float *)&wbuf[77], -1e6f, 1e6f);
     sync(reg_eszo_ki = fr);
+  }
+  if (vbuf[79]) {
+    fr = bound(*(float *)&wbuf[79], 0.f, 1e6f);
+    sync(n_ref_sl = fr);
   }
   if (vbuf[81]) {
     fr = bound(*(float *)&wbuf[81], 0.f, 1e6f);
@@ -3130,6 +3136,12 @@ void init()
   #endif //TEST
 
   // Инициализация ограничителей темпа
+  //  РЧВТ
+  rchvt_ot.cur = n;
+  rchvt_ot.dt = dt;
+  rchvt_ot.slope = n_ref_sl;
+  rchvt_ot.recalc = 1;
+  ogr_temp(&rchvt_ot, rchvt_ot.cur);
   //  РМ
   rm_ot.cur = ne;
   rm_ot.dt = dt;
@@ -3156,7 +3168,7 @@ void init()
   ogr_temp(&rtpv_ot, rtpv_ot.cur);
   
   // Ревизия программы в соответствии c Git (19.11.2018)
-  sw_rev = 8;
+  sw_rev = 9;
 
   // Инициализация таймаутов
   set_to_cnt_t(to_dt, dtms);
@@ -5099,6 +5111,8 @@ void all_proc()
       #endif
 
       // РЧВТ
+      rchvt_ot.slope = n_ref_sl;
+      rchvt_ot.dt = dt;
       rchvt_isodr.k = isodr_k;
       rchvt_isodr.fd.t = isodr_t*dt;
       rchvt_reg.k = reg_rchvt_k;
@@ -5108,14 +5122,18 @@ void all_proc()
       rchvt_reg.max = servo_cnt_max;
       static int rchvt_on_s = 0;
       if (chk_event(&rchvt_on_s, rchvt_on, 0)) {
+        n_ref_a = rchvt_ot.cur = n;
+        
         #ifdef ISODR
         rchvt_isodr.fd.x1 = n;
         rchvt_isodr.fd.y1 = n;
         #endif //ISODR
 
-        pid_reg_sync(&rchvt_reg, n_ref - n, servo_cnt_ref);
+        pid_reg_sync(&rchvt_reg, 0., servo_cnt_ref);
       }
       if (rchvt_on) {
+        n_ref_a = ogr_temp(&rchvt_ot, n_ref);
+        
         #ifdef NELIN
         float n_ = nelin(nelin_k, nelin_nb, nelin_ne, n);
         #else //NELIN
@@ -5167,7 +5185,9 @@ void all_proc()
           rchvt_reg.int_val = 0.;
         #endif //RCHVT_DEFENSE
 
-        servo_cnt_rchvt = pid_reg(&rchvt_reg, n_ref - n_);
+        servo_cnt_rchvt = pid_reg(&rchvt_reg, n_ref_a - n_);
+      } else {
+        n_ref_a = rchvt_ot.cur = n;
       }
 
       // КЧ
@@ -5960,9 +5980,7 @@ int readbuf(long *abuf)
   pnto_sl = 1.f;
   reg_eszo_k = 1.f;
   reg_eszo_ki = 0.f;
-  //n_sl_rm = 40.f;
-  //n_ns_rm_b = 49.6f;
-  //n_ns_rm_e = 50.2f;
+  n_ref_sl = 100.f;
   ne_ref_sl = 3.f;
   pt_rm_min = 125.f;
   pt_rm_max = 132.f;
@@ -7841,7 +7859,7 @@ float kch_insens(float v)
 // Зона нечувствительности для РЧВТ
 float rchvt_insens(float n_r)
 {
-  float pl = n_ref;
+  float pl = n_ref_a;
   if (fabs(pl - n_r) < rchvt_ins) return pl;
   else return n_r;
 }
