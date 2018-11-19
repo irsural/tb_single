@@ -3168,7 +3168,7 @@ void init()
   ogr_temp(&rtpv_ot, rtpv_ot.cur);
   
   // Ревизия программы в соответствии c Git (19.11.2018)
-  sw_rev = 10;
+  sw_rev = 11;
 
   // Инициализация таймаутов
   set_to_cnt_t(to_dt, dtms);
@@ -5140,7 +5140,7 @@ void all_proc()
 
         #ifdef ISODR
         float n_;
-        if (fabs(n - n_ref) < 10.f) {
+        if ((fabs(n - n_ref) < 10.f) || (rchvt_reg.ki == 0)) {
           n_ = isodr(&rchvt_isodr, n);
         } else {
           rchvt_isodr.fd.x1 = n;
