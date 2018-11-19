@@ -3184,7 +3184,7 @@ void init()
   ogr_temp(&rtpv_ot, rtpv_ot.cur);
   
   // Ревизия программы в соответствии c Git (19.11.2018)
-  sw_rev = 12;
+  sw_rev = 14;
 
   // Инициализация таймаутов
   set_to_cnt_t(to_dt, dtms);
