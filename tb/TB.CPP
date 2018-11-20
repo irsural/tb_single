@@ -605,7 +605,7 @@ void ai_int();
 // Прерывание аналоговых плат
 void interrupt aii(...);
 #endif //AI_INT
-// Синхронизация ПИД-регулятора без сбросов интегратор на текущее
+// Синхронизация ПИД-регулятора без сбросов интегратора на текущее
 // значение регулируемого параметра
 // при выключенном регуляторе
 // pd - Параметры ПИД-регулятора,
@@ -3184,7 +3184,7 @@ void init()
   ogr_temp(&rtpv_ot, rtpv_ot.cur);
   
   // Ревизия программы в соответствии c Git (19.11.2018)
-  sw_rev = 14;
+  sw_rev = 15;
 
   // Инициализация таймаутов
   set_to_cnt_t(to_dt, dtms);
@@ -5134,6 +5134,7 @@ void all_proc()
       rchvt_reg.k = reg_rchvt_k;
       rchvt_reg.ki = reg_rchvt_ki*dt;
       rchvt_reg.kd = reg_rchvt_kd/dt;
+      rchvt_reg.kii = reg_rchvt_kii*dt;
       rchvt_reg.min = servo_cnt_min;
       rchvt_reg.max = servo_cnt_max;
       static int rchvt_on_s = 0;
@@ -7826,7 +7827,7 @@ double pid_reg_new(pid_data *pd, double e)
   pd->prev_out = res;
   return res;
 }
-// Синхронизация ПИД-регулятора без сбросов интегратор на текущее
+// Синхронизация ПИД-регулятора без сбросов интегратора на текущее
 // значение регулируемого параметра
 // при выключенном регуляторе
 // pd - Параметры ПИД-регулятора,
