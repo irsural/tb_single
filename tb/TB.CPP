@@ -3184,7 +3184,7 @@ void init()
   ogr_temp(&rtpv_ot, rtpv_ot.cur);
   
   // Ревизия программы в соответствии c Git (19.11.2018)
-  sw_rev = 16;
+  sw_rev = 17;
 
   // Инициализация таймаутов
   set_to_cnt_t(to_dt, dtms);
@@ -7812,13 +7812,16 @@ double pid_reg_new(pid_data *pd, double e)
   res = Ires + PDres;
   
   // Применение антиинтегратора (инверсный интегратор)
-  if ((res > pd->max) || (res < pd->min)) {
-    pd->int_val -= pd->k*pd->ki*dif_int;
-    pd->int_val -= pd->k*pd->kii*dif_int;
-    Ires = pd->int_val;
+  if (pd->ki != 0) {
+    if ((res > pd->max) || (res < pd->min)) {
+      pd->int_val -= pd->k*pd->ki*dif_int;
+      pd->int_val -= pd->k*pd->kii*dif_int;
+    }
+  } else {
+    pd->int_val = 0;
   }
 
-  Ires = bound(Ires, pd->min, pd->max);
+  Ires = bound(pd->int_val, pd->min, pd->max);
   res = Ires + PDres;
   
   res = bound(res, pd->min, pd->max);
