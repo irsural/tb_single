@@ -73,8 +73,6 @@
 #endif //USE_CPU_COUNTER
 
 // Новое с 29.08.08
-#define NNEW
-#ifdef NNEW
 // Блокировка переключения датчиков при расхаживании
 #define SENS_SEL_BLOCK_ON_VALVE_TEST
 // Блокировка фильтра частоты детектирования сброса нагрузки по n_all_bad_isvt
@@ -85,7 +83,6 @@
 #define VALVE_TEST_TIMEOUT_BIGGER
 // Уменьшения диапазона совпадения датчиков с 10 до 3 об./мин
 #define SENS_SEL_REDUCE_RANGE_EQUAL
-#endif //NNEW
 
 #ifdef DBGONCPU
 #define DBGISVT // Выключение чтения частоты с ИСВТ
@@ -348,6 +345,8 @@ typedef struct _pid_data {
   double ki;
   // Коэффициент передачи дифференциатора
   double kd;
+  // Коэффициент передачи антиинтегратора (инверсный интегратор)
+  double kii;
   // Минимальное значение на выходе
   double min;
   // Максимальное значение на выходе
@@ -606,6 +605,14 @@ void ai_int();
 // Прерывание аналоговых плат
 void interrupt aii(...);
 #endif //AI_INT
+// Синхронизация ПИД-регулятора без сбросов интегратора на текущее
+// значение регулируемого параметра
+// при выключенном регуляторе
+// pd - Параметры ПИД-регулятора,
+// e - ошибка на входе регулятора
+// rp - значение выдаваемое на исполнительный механизм на который
+// осуществляется синхронизация
+void pid_reg_sync_new(pid_data *pd, double e, double rp);
 // Синхронизация ПИД-регулятора на текущее значение регулируемого параметра
 // при выключенном регуляторе
 // pd - Параметры ПИД-регулятора,
@@ -647,6 +654,8 @@ void nd_exec(int dir);
 void nd_proc();
 // ПИД-регулятор
 double pid_reg(pid_data *pd, double e);
+// ПИД-регулятор без сбросов интегратора
+double pid_reg_new(pid_data *pd, double e);
 // Перевод показаний таймера 0 из отсчетов в мс
 double tm0toms(uint cnt);
 // Шаг дискретизации регуляторов, с
@@ -1182,6 +1191,8 @@ int kg_off_esnd_zakr = 0;
 float t_dig = 1000.f;
 // Интервал смены декады кнопками ВД, НД, мс
 float t_dec = 4000.f;
+// Данные ограничителя темпа задания РЧВТ
+ogr_temp_data rchvt_ot;
 // Данные ограничителя темпа задания РМ
 ogr_temp_data rm_ot;
 // Данные ограничителя темпа задания РТО1
@@ -1263,7 +1274,6 @@ int wait_switch_isvt_sensor = 0;
 // Ожидание завершения интервала проверки датчиков ИСВТ
 int wait_interval_isvt = 0;
 
-#ifdef NNEW
 // Количество датчиков частоты на всех ИСВТ
 const int sensor_count = 6;
 // Номер первого датчика для sensor_select
@@ -1278,7 +1288,6 @@ const int isvt_freq_count = 3;
 const int isvt_sensor_first = 1;
 // Номер второго датчика для ИСВТ
 const int isvt_sensor_second = 2;
-#endif //NNEW
 
 // Режим работы с ИСВТ
 // 0 - норма
@@ -1616,12 +1625,12 @@ float &pnto_sl = *(float *)&buf[75];
 float &reg_eszo_k = *(float *)&buf[76];
 // Интегральный коэффициент регулятора ЭСЗО
 float &reg_eszo_ki = *(float *)&buf[77];
-// Крутизна передачи частоты на РМ
-//float &n_sl_rm = *(float *)&buf[78];
-// Начало зоны нечувствительности по частоте РМ
-//float &n_ns_rm_b = *(float *)&buf[79];
-// Конец зоны нечувствительности по частоте РМ
-//float &n_ns_rm_e = *(float *)&buf[80];
+// Задание по частоте вращения турбины РЧВТ [об./мин.] после ограничителя темпа
+float &n_ref_a = *(float *)&buf[78];
+// Крутизна изменения задания РЧВТ (100 (об./мин.)/мин.)
+float &n_ref_sl = *(float *)&buf[79];
+// Антиинтегральный коэффициент РЧВТ
+float &reg_rchvt_kii = *(float *)&buf[80];
 // Крутизна изменения задания РМ по электрической мощности
 float &ne_ref_sl = *(float *)&buf[81];
 // Задание по электрической мощности РМ
@@ -1967,6 +1976,8 @@ float *ai_smax[15] = {&pim_smax, &prm_smax, &ne_smax, &prs_smax, &pt_smax,
 
 // ********************
 // Служебные перменные
+// Ревизия программы в соответствии c Git (19.11.2018)
+long &sw_rev = buf[CNT_VAR - 54];
 // Включение управления НД без датчика hesnd
 long &nd_nosens = buf[CNT_VAR - 53];
 // Частота по первому датчику, об./мин.
@@ -2293,6 +2304,14 @@ void filtrbuf()
   if (vbuf[77]) {
     fr = bound(*(float *)&wbuf[77], -1e6f, 1e6f);
     sync(reg_eszo_ki = fr);
+  }
+  if (vbuf[79]) {
+    fr = bound(*(float *)&wbuf[79], 0.f, 10000.f);
+    sync(n_ref_sl = fr);
+  }
+  if (vbuf[80]) {
+    fr = bound(*(float *)&wbuf[80], -1e6f, 1e6f);
+    sync(reg_rchvt_kii = fr);
   }
   if (vbuf[81]) {
     fr = bound(*(float *)&wbuf[81], 0.f, 1e6f);
@@ -3133,6 +3152,12 @@ void init()
   #endif //TEST
 
   // Инициализация ограничителей темпа
+  //  РЧВТ
+  rchvt_ot.cur = n;
+  rchvt_ot.dt = dt;
+  rchvt_ot.slope = n_ref_sl;
+  rchvt_ot.recalc = 1;
+  ogr_temp(&rchvt_ot, rchvt_ot.cur);
   //  РМ
   rm_ot.cur = ne;
   rm_ot.dt = dt;
@@ -3157,6 +3182,9 @@ void init()
   rtpv_ot.slope = tpv_ref_sl;
   rtpv_ot.recalc = 1;
   ogr_temp(&rtpv_ot, rtpv_ot.cur);
+  
+  // Ревизия программы в соответствии c Git (19.11.2018)
+  sw_rev = 16;
 
   // Инициализация таймаутов
   set_to_cnt_t(to_dt, dtms);
@@ -3764,11 +3792,7 @@ void select_isvt_sensor()
   #endif //SENS_SEL_BLOCK_ON_VALVE_TEST
   #endif //NEW_SENS_SEL
 
-  #ifdef NNEW
   int n_all_bad_isvt_no_unblocked_sensors = 0;
-  #else //NNEW
-  int flag = 1;
-  #endif //NNEW
   #ifdef BLOCK_SELECT_N_VALVE_TEST_ISVT
   int i_sovp = 0;
   int max_sovp = schet_sovp[i_sovp];
@@ -3859,8 +3883,6 @@ void select_isvt_sensor()
   }
   #endif //NEW_SENS_SEL
 
-  #ifdef NNEW
-  
   int n_all_bad_isvt_max_sovp_low = 0;
   if (max_sovp < 2) {
     n_all_bad_isvt_max_sovp_low = 1; // Если мало совпадений
@@ -3888,25 +3910,6 @@ void select_isvt_sensor()
   }
   #endif //NOP
   
-  #else //NNEW
-  
-  #ifndef NNEW
-  if (max_sovp >= 2) flag = 0;
-  #endif //NNEW
-  n_all_bad_isvt = flag;
-  #ifdef NOP
-  // Частота 3000 в работе
-  i_sovp = i_sovp;
-  n = 3000.f;
-  #else //NOP
-  n = *nm[i_sovp]/10.f;
-  #endif //NOP
-  if (kg_v) {
-    if ((n > 3700.f) || (n < 2300.f)) n_all_bad_isvt = 1;
-  }
-  
-  #endif //NNEW
-
   #endif //DBGONCPU
   
   #ifdef DETECT_N_ANOMAL
@@ -4695,6 +4698,9 @@ void corr_hzu()
   }
   if (hzu_mint > hzu) hzu_mint = hzu;
   if (hzu_maxt < hzu) hzu_maxt = hzu;
+  
+  // Поиск интервала времени t_d_hzu в котором hzu меняется незначительно
+  // < d_hzu_max. При этом флаг d_hzu_norm выставляется в 1
   if (test_to_cnt_t(to_d_hzu)) {
     set_to_cnt_t(to_d_hzu, t_d_hzu);
     if (hzu_maxt - hzu_mint < d_hzu_max) d_hzu_norm = 1;
@@ -5121,30 +5127,37 @@ void all_proc()
       #endif
 
       // РЧВТ
+      rchvt_ot.slope = n_ref_sl;
+      rchvt_ot.dt = dt;
       rchvt_isodr.k = isodr_k;
       rchvt_isodr.fd.t = isodr_t*dt;
       rchvt_reg.k = reg_rchvt_k;
       rchvt_reg.ki = reg_rchvt_ki*dt;
       rchvt_reg.kd = reg_rchvt_kd/dt;
+      rchvt_reg.kii = reg_rchvt_kii*dt;
       rchvt_reg.min = servo_cnt_min;
       rchvt_reg.max = servo_cnt_max;
       static int rchvt_on_s = 0;
       if (chk_event(&rchvt_on_s, rchvt_on, 0)) {
+        n_ref_a = rchvt_ot.cur = n;
+        
         #ifdef ISODR
         rchvt_isodr.fd.x1 = n;
         rchvt_isodr.fd.y1 = n;
         #endif //ISODR
 
-        pid_reg_sync(&rchvt_reg, n_ref - n, servo_cnt_ref);
+        pid_reg_sync_new(&rchvt_reg, 0., servo_cnt_ref);
       }
       if (rchvt_on) {
+        n_ref_a = ogr_temp(&rchvt_ot, n_ref);
+        
         #ifdef NELIN
         float n_ = nelin(nelin_k, nelin_nb, nelin_ne, n);
         #else //NELIN
 
         #ifdef ISODR
         float n_;
-        if (fabs(n - n_ref) < 10.f) {
+        if ((fabs(n - n_ref) < 10.f) || (rchvt_reg.ki == 0)) {
           n_ = isodr(&rchvt_isodr, n);
         } else {
           rchvt_isodr.fd.x1 = n;
@@ -5158,30 +5171,11 @@ void all_proc()
 
         #endif //NELIN
 
-        // Синхронизация интергатора при изменении коэффициентов
-        // и после коррекции
-        static int _init = 1;
-        static double k_p = 0., ki_p = 0., kd_p = 0.;
-        pid_data *reg = &rchvt_reg;
-        if (_init) {
-          _init = 0;
-          k_p = reg->k;
-          ki_p = reg->ki;
-          kd_p = reg->kd;
-        } else {
-          if (corr_hzu_en) {
-            reg->prev_out += delta_cnt_corr;
-          }
-          if ((k_p != reg->k) || (ki_p != reg->ki) || (kd_p != reg->kd) ||
-            corr_hzu_en) {
-            #ifdef CORR_HZU_ERR_CORR
-            corr_hzu_en = 0;
-            #endif //CORR_HZU_ERR_CORR
-            pid_reg_sync(reg);
-          }
-          k_p = reg->k;
-          ki_p = reg->ki;
-          kd_p = reg->kd;
+        // Синхронизация интергатора после коррекции
+        // При изменении коэффициентов не нужно в новом регуляторе
+        if (corr_hzu_en) {
+          rchvt_reg.prev_e += delta_cnt_corr;
+          pid_reg_sync_new(&rchvt_reg, rchvt_reg.prev_e, rchvt_reg.prev_out);
         }
 
         #ifdef RCHVT_DEFENSE
@@ -5189,7 +5183,9 @@ void all_proc()
           rchvt_reg.int_val = 0.;
         #endif //RCHVT_DEFENSE
 
-        servo_cnt_rchvt = pid_reg(&rchvt_reg, n_ref - n_);
+        servo_cnt_rchvt = pid_reg_new(&rchvt_reg, n_ref_a - n_);
+      } else {
+        n_ref_a = rchvt_ot.cur = n;
       }
 
       // КЧ
@@ -5982,9 +5978,8 @@ int readbuf(long *abuf)
   pnto_sl = 1.f;
   reg_eszo_k = 1.f;
   reg_eszo_ki = 0.f;
-  //n_sl_rm = 40.f;
-  //n_ns_rm_b = 49.6f;
-  //n_ns_rm_e = 50.2f;
+  n_ref_sl = 100.f;
+  reg_rchvt_kii = 0.05f;
   ne_ref_sl = 3.f;
   pt_rm_min = 125.f;
   pt_rm_max = 132.f;
@@ -7430,21 +7425,21 @@ void interrupt aii()
 // front - 0 - событие по переднему фронту, 1 - по заднему, 2 - оба фронта
 int chk_event(int *var, int signal, int front)
 {
-        int res = 0;
-        switch (front) {
-                case 0:
-                        if ((0 == *var) && (1 == signal)) res = 1;
-                        break;
-                case 1:
-                        if ((1 == *var) && (0 == signal)) res = 1;
-                        break;
-                case 2:
-                        if ((0 == *var) && (1 == signal)) res = 1;
-                        if ((1 == *var) && (0 == signal)) res = 1;
-                        break;
-        }
-        *var = signal;
-        return res;
+  int res = 0;
+  switch (front) {
+    case 0:
+      if ((0 == *var) && (1 == signal)) res = 1;
+      break;
+    case 1:
+      if ((1 == *var) && (0 == signal)) res = 1;
+      break;
+    case 2:
+      if ((0 == *var) && (1 == signal)) res = 1;
+      if ((1 == *var) && (0 == signal)) res = 1;
+      break;
+  }
+  *var = signal;
+  return res;
 }
 // Обработка данных от плат AI
 void ai_proc()
@@ -7804,6 +7799,52 @@ double pid_reg(pid_data *pd, double e)
   pd->prev_out = res;
   return res;
 }
+// ПИД-регулятор без сбросов интегратора
+double pid_reg_new(pid_data *pd, double e)
+{
+  double dif_int = pd->prev_e;
+  double res = 0;
+  if (pd->block_int_ext == 1) if (pd->prev_e > 0) dif_int = 0;
+  if (pd->block_int_ext == -1) if (pd->prev_e < 0) dif_int = 0;
+  pd->int_val += pd->k*pd->ki*dif_int;
+  double Ires = pd->int_val;
+  double PDres = pd->k*(e + pd->kd*(e - pd->prev_e));
+  res = Ires + PDres;
+  
+  // Применение антиинтегратора (инверсный интегратор)
+  if ((res > pd->max) || (res < pd->min)) {
+    pd->int_val -= pd->k*pd->ki*dif_int;
+    pd->int_val -= pd->k*pd->kii*dif_int;
+    Ires = pd->int_val;
+  }
+
+  Ires = bound(Ires, pd->min, pd->max);
+  res = Ires + PDres;
+  
+  res = bound(res, pd->min, pd->max);
+  pd->pp_e = pd->prev_e;
+  pd->prev_e = e;
+  pd->prev_out = res;
+  return res;
+}
+// Синхронизация ПИД-регулятора без сбросов интегратора на текущее
+// значение регулируемого параметра
+// при выключенном регуляторе
+// pd - Параметры ПИД-регулятора,
+// e - ошибка на входе регулятора
+// rp - значение выдаваемое на исполнительный механизм на который
+// осуществляется синхронизация
+void pid_reg_sync_new(pid_data *pd, double e, double rp)
+{
+  if ((pd->k == 0.) || (pd->ki == 0.)) {
+    pd->int_val = 0.;
+  } else {
+    pd->int_val = bound(rp - pd->k*e, pd->min, pd->max);
+  }
+  pd->pp_e = e;
+  pd->prev_e = e;
+  pd->prev_out = rp;
+}
 // Синхронизация ПИД-регулятора на текущее значение регулируемого параметра
 // при выключенном регуляторе
 // pd - Параметры ПИД-регулятора,
@@ -7863,7 +7904,7 @@ float kch_insens(float v)
 // Зона нечувствительности для РЧВТ
 float rchvt_insens(float n_r)
 {
-  float pl = n_ref;
+  float pl = n_ref_a;
   if (fabs(pl - n_r) < rchvt_ins) return pl;
   else return n_r;
 }
@@ -8438,8 +8479,8 @@ void k_vd_proc()
   int kvdb, kvdm;
   if (vd_sw != 3)
   if (kg_v) {
-        if (vd_sw == 2) {
-        k_vd_mode = 4;
+    if (vd_sw == 2) {
+      k_vd_mode = 4;
     } else {
       if (1 == opt_sw) {
         k_vd_mode = 2;
@@ -8448,7 +8489,7 @@ void k_vd_proc()
       }
     }
   } else {
-        k_vd_mode = 1;
+    k_vd_mode = 1;
   }
   if (k_vd_mode) {
     if (k_vd_mode != k_vd_mode_prev) {
